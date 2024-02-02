@@ -20,42 +20,31 @@ type Msg =
 let private init () =
     { Value = None }, Cmd.none
 
-// [Issue 1] Pass combobox to update function such that...
-let private update (comboboxStore: ComboboxStore) msg state =
+let private update (comboboxStoreRef: IRefValue<ComboboxStore>) msg state =
+    let comboboxStore = comboboxStoreRef.current
     match msg with
     | ValueSelected value ->
-        // [Issue 1] ... I'm able to call functions of ComboboxStore from here
         comboboxStore.closeDropdown ()
         { state with Value = Some value }, Cmd.none
     | NoOp ->
-        // [Issue 2] The comboboxStore parameter is not updated
         JS.console.log (comboboxStore)
         state, Cmd.none
 
 [<ReactComponent>]
 let Page() =
-    // [Issue 1]
-    // The example contains the following code:
-    //      const combobox = useCombobox({
-    //          onDropdownClose: () => combobox.resetSelectedOption(),
-    //      });
-    // In F# it's not possible to call combobox.resetSelectedOption() at the same place.
-    // let comboboxStore = Man.useCombobox (new UseComboboxOptions (onDropdownClose = fun () -> comboboxStore.resetSelectedOption ()))
-    // let state, dispatch = React.useElmish (init, update comboboxStore)
+    // Create a ref which initially has no value, but has the correct type.
+    let comboboxStoreRef = React.useRef Unchecked.defaultof<ComboboxStore>
+    // Initialize the combobox store. We can use the ref in the callback functions :)
+    let comboboxStore = Man.useCombobox (new UseComboboxOptions (onDropdownClose = fun () -> comboboxStoreRef.current.resetSelectedOption ()))
+    // Set the combobox store in the ref.
+    comboboxStoreRef.current <- comboboxStore
 
-    // Therefore, it probably has to be controlled, but then I have to dispatch messages, so I cannot pass comboboxStore to the update function.
-    // let state, dispatch = React.useElmish (init, update)
-    // let comboboxStore = Man.useCombobox (new UseComboboxOptions (onDropdownClose = fun () -> dispatch (SetSelectedOption None)))
-
-    // I prefer not to have to control everything about the combobox, because that can get out of hand quite quickly.
-    // How to solve this?
-    let comboboxStore = Man.useCombobox (new UseComboboxOptions ())
-
-    // [Issue 2] I tried to pass the current comboboxStore to the update function like this
-    let updateFunc = update comboboxStore
+    // Use the ref in the update function. `ref.current` does correctly get updated.
+    let updateFunc = update comboboxStoreRef
     let state, dispatch = React.useElmish (init, updateFunc)
 
     React.useEffectOnce (fun _ ->
+        // This now prints the updated combobox store every 2 seconds :)
         JS.setInterval (fun _ -> dispatch NoOp) 2000 |> ignore
     )
 

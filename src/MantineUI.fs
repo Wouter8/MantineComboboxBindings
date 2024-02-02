@@ -50,6 +50,7 @@ type ComboboxStore =
     abstract openDropdown: (unit -> unit) with get, set
     abstract closeDropdown: (unit -> unit) with get, set
     abstract toggleDropdown: (unit -> unit) with get, set
+    abstract resetSelectedOption: (unit -> unit) with get, set
 
 
 type Man =
